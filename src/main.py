@@ -11,6 +11,7 @@ from collections import defaultdict
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import euclidean_distances
 from scipy.optimize import minimize
+from scipy import stats
 #baseball functions
 from load_data import load_and_filter_data, load_and_prepare_data
 from colors import load_team_colors, get_team_color
@@ -22,6 +23,7 @@ from make_war import custom_war_generator
 from milestone_tracker import milestone_tracker
 from goat import how_is_he_the_goat
 from outliers import anomaly_tracker, identify_statistical_outliers, plot_stat_distributions
+from era_adjustment import adjust_stat, calculate_era_factors, era_adjustment_tool
 from bangbang import generate_astros_cheating_fact, display_astros_cheating_fact
 
 
@@ -33,13 +35,8 @@ def main():
     st.sidebar.title("Navigation")
     app_mode = st.sidebar.radio("Choose the mode",
                                 ["Individual Player", "Compare Players", "Historical Histogram", "Milestone Tracker", "Find Outliers",
-                                 "Career Stat Race", "Player Similarity", "Custom WAR Generator",
+                                 "Career Stat Race", "Player Similarity", "Era Adjustment Tool", "Custom WAR Generator",
                                  "How is he the GOAT?"])
-    
-    # Reset session state when changing modes
-    if 'current_mode' not in st.session_state or st.session_state.current_mode != app_mode:
-        st.session_state.player_data = None
-        st.session_state.current_mode = app_mode
     
     if app_mode == "Individual Player":
         individual_player_view()
@@ -57,9 +54,11 @@ def main():
         milestone_tracker()
     elif app_mode == "Find Outliers":
         anomaly_tracker()
+    elif app_mode == "Era Adjustment Tool":
+        era_adjustment_tool()
     else:  # How is he the GOAT?
         how_is_he_the_goat()
-    
+
     # Display the Astros cheating fact at the bottom of each page
     display_astros_cheating_fact()
 
