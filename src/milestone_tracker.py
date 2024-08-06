@@ -64,7 +64,10 @@ def milestone_tracker():
                 if stat not in display_columns:
                     display_columns.insert(3, stat)  # Insert the stat after 'Team' if it's not already included
                 
-                st.dataframe(milestone_players[display_columns])
+                st.dataframe(milestone_players[display_columns].style.format({
+                    'year': '{:d}',
+                    stat: '{:.3f}' if stat in ['AVG', 'OBP', 'SLG', 'OPS', 'ERA', 'WHIP'] else '{:,d}'
+                }))
             else:
                 st.warning("No players found who reached this milestone in a single season.")
 
@@ -91,8 +94,11 @@ def milestone_tracker():
             if not milestone_players.empty:
                 st.success(f"Found {len(milestone_players)} players who reached this career milestone!")
                 
+                milestone_players['First Year'] = milestone_players['First Year'].astype(int)
+                milestone_players['Last Year'] = milestone_players['Last Year'].astype(int)
+                
                 # Create a display name that includes career span to differentiate players with the same name
-                milestone_players['Display Name'] = milestone_players['Name'] + ' (' + milestone_players['First Year'].astype(int).astype(str) + '-' + milestone_players['Last Year'].astype(int).astype(str) + ')'
+                milestone_players['Display Name'] = milestone_players['Name'] + ' (' + milestone_players['First Year'].astype(str) + '-' + milestone_players['Last Year'].astype(str) + ')'
                 
                 display_columns = ['Display Name', stat, 'First Year', 'Last Year', 'Years Played']
                 if 'PA' in milestone_players.columns:
@@ -100,7 +106,13 @@ def milestone_tracker():
                 elif 'IP' in milestone_players.columns:
                     display_columns.append('IP')
                 
-                st.dataframe(milestone_players[display_columns])
+                st.dataframe(milestone_players[display_columns].style.format({
+                    'First Year': '{:d}',
+                    'Last Year': '{:d}',
+                    stat: '{:.3f}' if stat in ['AVG', 'OBP', 'SLG', 'OPS', 'ERA', 'WHIP'] else '{:,d}',
+                    'PA': '{:,d}',
+                    'IP': '{:.1f}'
+                }))
             else:
                 st.warning("No players found who reached this career milestone.")
 
