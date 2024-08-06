@@ -3,7 +3,7 @@ import streamlit as st
 @st.cache_data
 def load_team_colors():
     team_colors = {}
-    with open('team_colors.txt', 'r') as file:
+    with open('data/team_colors.txt', 'r') as file:
         for line in file:
             team, color = line.strip().split(': ')
             team_colors[team.upper()] = color

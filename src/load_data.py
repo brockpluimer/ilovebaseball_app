@@ -3,14 +3,21 @@ import pandas as pd
 import streamlit as st
 from typing import List, Union, Optional, Tuple
 
+# Get the directory of the current script
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the path to the data directory
+data_dir = os.path.join(current_dir, 'data')
+
 @st.cache_data
-def load_and_filter_data(data_type, player_names_or_ids=None):
-    data_dir = 'hitter_data' if data_type == "Hitter" else 'pitcher_data'
+def load_and_filter_data(data_type: str, player_names_or_ids: Optional[List[Union[str, int]]] = None) -> pd.DataFrame:
+    data_subdir = 'hitter_data' if data_type == "Hitter" else 'pitcher_data'
+    data_path = os.path.join(data_dir, data_subdir)
     all_data = []
-    for filename in os.listdir(data_dir):
+    for filename in os.listdir(data_path):
         if filename.endswith('.csv'):
             year = filename.split('_')[-1].split('.')[0]
-            file_path = os.path.join(data_dir, filename)
+            file_path = os.path.join(data_path, filename)
             data = pd.read_csv(file_path)
             data['year'] = int(year)
             data['player_type'] = data_type.lower()
@@ -21,13 +28,13 @@ def load_and_filter_data(data_type, player_names_or_ids=None):
     if player_names_or_ids:
         filtered_data = full_data[
             full_data['Name'].isin(player_names_or_ids) | 
-            full_data['IDfg'].astype(str).isin(player_names_or_ids)
+            full_data['IDfg'].astype(str).isin(map(str, player_names_or_ids))
         ]
         return filtered_data if not filtered_data.empty else pd.DataFrame()
     else:
         return full_data
 
-def load_and_prepare_data(data_type):
+def load_and_prepare_data(data_type: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     data_df = load_and_filter_data(data_type)
     
     # Replace NaN values in IDfg with a placeholder (e.g., -1)
