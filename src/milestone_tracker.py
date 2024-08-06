@@ -86,14 +86,13 @@ def milestone_tracker():
                 else:  # Pitcher
                     career_stats = career_stats[career_stats['IP'] >= min_ip * career_stats['Years Played']]
 
-            milestone_players['Display Name'] = milestone_players['Name'] + ' (' + milestone_players['First Year'].astype(int).astype(str) + '-' + milestone_players['Last Year'].astype(int).astype(str) + ')'
-
+            milestone_players = career_stats[career_stats[stat] >= milestone_value].sort_values(stat, ascending=False)
 
             if not milestone_players.empty:
                 st.success(f"Found {len(milestone_players)} players who reached this career milestone!")
                 
                 # Create a display name that includes career span to differentiate players with the same name
-                milestone_players['Display Name'] = milestone_players['Name'] + ' (' + milestone_players['First Year'].astype(str) + '-' + milestone_players['Last Year'].astype(str) + ')'
+                milestone_players['Display Name'] = milestone_players['Name'] + ' (' + milestone_players['First Year'].astype(int).astype(str) + '-' + milestone_players['Last Year'].astype(int).astype(str) + ')'
                 
                 display_columns = ['Display Name', stat, 'First Year', 'Last Year', 'Years Played']
                 if 'PA' in milestone_players.columns:
