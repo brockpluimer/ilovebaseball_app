@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from load_data import load_and_filter_data
 
 def milestone_tracker():
@@ -68,18 +69,18 @@ def milestone_tracker():
                 st.warning("No players found who reached this milestone in a single season.")
 
         else:  # Career milestone
-            career_stats = data_df.groupby('Name').agg({
+            career_stats = data_df.groupby(['IDfg', 'Name']).agg({
                 stat: 'sum' if stat not in ['AVG', 'OBP', 'SLG', 'OPS', 'ERA', 'WHIP', 'K/9', 'BB/9', 'FIP'] else 'mean',
                 'year': ['min', 'max']
             }).reset_index()
-            career_stats.columns = ['Name', stat, 'First Year', 'Last Year']
+            career_stats.columns = ['IDfg', 'Name', stat, 'First Year', 'Last Year']
             career_stats['Years Played'] = career_stats['Last Year'] - career_stats['First Year'] + 1
 
             if use_min_filter:
-                career_totals = data_df.groupby('Name').agg({
+                career_totals = data_df.groupby(['IDfg', 'Name']).agg({
                     'PA' if data_type == "Hitter" else 'IP': 'sum'
                 }).reset_index()
-                career_stats = career_stats.merge(career_totals, on='Name')
+                career_stats = career_stats.merge(career_totals, on=['IDfg', 'Name'])
                 if data_type == "Hitter":
                     career_stats = career_stats[career_stats['PA'] >= min_pa * career_stats['Years Played']]
                 else:  # Pitcher
@@ -89,6 +90,19 @@ def milestone_tracker():
 
             if not milestone_players.empty:
                 st.success(f"Found {len(milestone_players)} players who reached this career milestone!")
-                st.dataframe(milestone_players)
+                
+                # Create a display name that includes career span to differentiate players with the same name
+                milestone_players['Display Name'] = milestone_players['Name'] + ' (' + milestone_players['First Year'].astype(str) + '-' + milestone_players['Last Year'].astype(str) + ')'
+                
+                display_columns = ['Display Name', stat, 'First Year', 'Last Year', 'Years Played']
+                if 'PA' in milestone_players.columns:
+                    display_columns.append('PA')
+                elif 'IP' in milestone_players.columns:
+                    display_columns.append('IP')
+                
+                st.dataframe(milestone_players[display_columns])
             else:
                 st.warning("No players found who reached this career milestone.")
+
+if __name__ == "__main__":
+    milestone_tracker()
