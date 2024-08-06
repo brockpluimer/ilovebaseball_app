@@ -64,10 +64,18 @@ def milestone_tracker():
                 if stat not in display_columns:
                     display_columns.insert(3, stat)  # Insert the stat after 'Team' if it's not already included
                 
-                st.dataframe(milestone_players[display_columns].style.format({
+                # Apply correct formatting for integer and float types
+                format_dict = {
                     'year': '{:d}',
-                    stat: '{:.3f}' if stat in ['AVG', 'OBP', 'SLG', 'OPS', 'ERA', 'WHIP'] else '{:,d}'
-                }))
+                    stat: '{:.3f}' if milestone_players[stat].dtype.kind == 'f' else '{:,d}'
+                }
+
+                # Format integer fields correctly
+                for col in display_columns:
+                    if milestone_players[col].dtype.kind == 'i':
+                        format_dict[col] = '{:,d}'
+
+                st.dataframe(milestone_players[display_columns].style.format(format_dict))
             else:
                 st.warning("No players found who reached this milestone in a single season.")
 
@@ -106,13 +114,21 @@ def milestone_tracker():
                 elif 'IP' in milestone_players.columns:
                     display_columns.append('IP')
                 
-                st.dataframe(milestone_players[display_columns].style.format({
+                # Apply correct formatting for integer and float types
+                format_dict = {
                     'First Year': '{:d}',
                     'Last Year': '{:d}',
-                    stat: '{:.3f}' if stat in ['AVG', 'OBP', 'SLG', 'OPS', 'ERA', 'WHIP'] else '{:,d}',
-                    'PA': '{:,d}',
-                    'IP': '{:.1f}'
-                }))
+                    stat: '{:.3f}' if milestone_players[stat].dtype.kind == 'f' else '{:,d}',
+                    'PA': '{:,d}' if 'PA' in milestone_players.columns else '',
+                    'IP': '{:.1f}' if 'IP' in milestone_players.columns else ''
+                }
+
+                # Format integer fields correctly
+                for col in display_columns:
+                    if milestone_players[col].dtype.kind == 'i':
+                        format_dict[col] = '{:,d}'
+
+                st.dataframe(milestone_players[display_columns].style.format(format_dict))
             else:
                 st.warning("No players found who reached this career milestone.")
 
