@@ -21,6 +21,7 @@ from similarity import calculate_similarity_scores, player_similarity_view
 from make_war import custom_war_generator
 from milestone_tracker import milestone_tracker
 from goat import how_is_he_the_goat
+from outliers import anomaly_tracker, identify_statistical_outliers, plot_stat_distributions
 from bangbang import generate_astros_cheating_fact, display_astros_cheating_fact
 
 
@@ -31,7 +32,7 @@ def main():
     
     st.sidebar.title("Navigation")
     app_mode = st.sidebar.radio("Choose the mode",
-                                ["Individual Player", "Compare Players", "Historical Histogram", "Milestone Tracker",
+                                ["Individual Player", "Compare Players", "Historical Histogram", "Milestone Tracker", "Find Outliers",
                                  "Career Stat Race", "Player Similarity", "Custom WAR Generator",
                                  "How is he the GOAT?"])
     
@@ -54,6 +55,8 @@ def main():
         custom_war_generator()
     elif app_mode == "Milestone Tracker":
         milestone_tracker()
+    elif app_mode == "Find Outliers":
+        anomaly_tracker()
     else:  # How is he the GOAT?
         how_is_he_the_goat()
     
