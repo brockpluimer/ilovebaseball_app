@@ -28,7 +28,7 @@ from bangbang import generate_astros_cheating_fact, display_astros_cheating_fact
 
 
 def main():
-    st.title("Brock's Baseball Stats Explorer")
+    st.title("Baseball Stats Explorer")
     
     st.header("It's Time For Dodger Baseball! (or your team who sucks)")
     
