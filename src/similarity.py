@@ -7,10 +7,11 @@ from sklearn.metrics.pairwise import euclidean_distances
 from typing import List, Dict, Union
 from load_data import load_and_prepare_data
 
+@st.cache_data
 def calculate_similarity_scores(player_data, target_player, stats_to_compare, mode='season', scaling_factor=10):
     # Filter players of the same type (hitter or pitcher)
     player_data = player_data[player_data['player_type'] == target_player['player_type']]
-    
+
     if mode == 'season':
         # For season mode, we'll compare individual seasons
         # Exclude the target player's other seasons
@@ -34,12 +35,17 @@ def calculate_similarity_scores(player_data, target_player, stats_to_compare, mo
     # Remove players with missing data for any of the selected stats
     players_stats = players_stats.dropna(subset=stats_to_compare)
     
+    if players_stats.empty:
+        return pd.DataFrame()  # Return an empty DataFrame instead of calculating similarities
+
     # Normalize the data
     scaler = MinMaxScaler()
     normalized_stats = scaler.fit_transform(players_stats[stats_to_compare])
     
     # Calculate distances
     target_player_stats = normalized_stats[players_stats['IDfg'] == target_player['IDfg']]
+    if len(target_player_stats) == 0:
+        return pd.DataFrame()
     distances = euclidean_distances(target_player_stats, normalized_stats)[0]
     
     # Create similarity scores with scaling factor
@@ -99,6 +105,10 @@ def player_similarity_view():
 
     data_df, player_years = load_and_prepare_data(data_type)
     
+    # Ensure player_type is in both dataframes
+    data_df['player_type'] = data_type
+    player_years['player_type'] = data_type
+    
     # Set Clayton Kershaw as the default pitcher and Shohei Ohtani as the default hitter
     default_player = "Clayton Kershaw" if data_type == "Pitcher" else "Shohei Ohtani"
     
@@ -127,9 +137,12 @@ def player_similarity_view():
             index=0,
             key="season_selectbox"
         )
-        target_player = data_df[(data_df['IDfg'] == target_player_id) & (data_df['year'] == target_year)].iloc[0]
+        target_player = data_df[(data_df['IDfg'] == target_player_id) & (data_df['year'] == target_year)].iloc[0].to_dict()
     else:
-        target_player = player_years[player_years['IDfg'] == target_player_id].iloc[0]
+        target_player = player_years[player_years['IDfg'] == target_player_id].iloc[0].to_dict()
+
+    # Ensure player_type is in target_player
+    target_player['player_type'] = data_type
 
     num_similar_players = st.slider("Number of similar players to find:", 1, 20, 5, key="num_similar_players_slider")
     
@@ -142,7 +155,7 @@ def player_similarity_view():
     stats_to_compare = st.multiselect(
         "Select stats to compare:",
         available_stats,
-        default=default_stats,
+        default=[stat for stat in default_stats if stat in available_stats],
         key="stats_to_compare_multiselect"
     )
 
@@ -154,55 +167,63 @@ def player_similarity_view():
     )
 
     if st.button("Find Similar Players"):
-        similarity_scores = calculate_similarity_scores(data_df, target_player, stats_to_compare, mode.lower(), scaling_factor)
-        
-        if similarity_scores.empty:
-            st.warning(f"No similar players found for {target_player_label} using the selected stats. This may be due to missing data for the selected player or stats. Try selecting different stats.")
-        else:
-            st.subheader(f"Players most similar to {target_player_label}")
-            for _, player in similarity_scores.head(num_similar_players).iterrows():
-                player_name = f"{player['Name']} ({player['year']})" if mode == "Season" else f"{player['Name']} ({player['First Year']}-{player['Last Year']})"
-                st.write(f"{player_name} (Similarity: {player['Similarity']:.2f})")
+        try:
+            similarity_scores = calculate_similarity_scores(data_df, target_player, stats_to_compare, mode.lower(), scaling_factor)
             
-            # Determine which stat to use for the y-axis
-            y_stat = 'WAR' if 'WAR' in similarity_scores.columns else stats_to_compare[0]
-            
-            # Prepare hover data
-            hover_data = ['Name', 'year' if mode == 'Season' else 'Years', 'Similarity'] + stats_to_compare
+            if similarity_scores.empty:
+                st.warning(f"No similar players found for {target_player_label} using the selected stats. This may be due to missing data for the selected player or stats. Try selecting different stats.")
+            else:
+                st.subheader(f"Players most similar to {target_player_label}")
+                for _, player in similarity_scores.head(num_similar_players).iterrows():
+                    player_name = f"{player['Name']} ({player['year']})" if mode == "Season" else f"{player['Name']} ({player['First Year']}-{player['Last Year']})"
+                    st.write(f"{player_name} (Similarity: {player['Similarity']:.2f})")
+                
+                # Determine which stat to use for the y-axis
+                y_stat = 'WAR' if 'WAR' in similarity_scores.columns else stats_to_compare[0]
+                
+                # Prepare hover data
+                hover_data = ['Name', 'year' if mode == 'Season' else 'Years', 'Similarity'] + stats_to_compare
 
-            # Create the scatter plot
-            fig = px.scatter(
-                similarity_scores.head(num_similar_players),
-                x='Similarity',
-                y=y_stat,
-                hover_name='Name',
-                hover_data=hover_data,
-                title=f"Top {num_similar_players} Similar Players to {target_player_label} ({mode} Comparison)"
-            )
+                # Create the scatter plot
+                fig = px.scatter(
+                    similarity_scores.head(num_similar_players),
+                    x='Similarity',
+                    y=y_stat,
+                    hover_name='Name',
+                    hover_data=hover_data,
+                    title=f"Top {num_similar_players} Similar Players to {target_player_label} ({mode} Comparison)"
+                )
 
-            # Add target player as a different marker
-            target_data = pd.DataFrame([target_player])
-            if y_stat not in target_data.columns:
-                # Use the mean of the stat for the target player if not available
-                target_data[y_stat] = data_df[data_df['IDfg'] == target_player['IDfg']][y_stat].mean()
-            
-            fig.add_trace(px.scatter(
-                target_data,
-                x=[1],  # Maximum similarity
-                y=[target_data[y_stat].iloc[0]],
-                hover_name='Name',
-                hover_data=[col for col in hover_data if col in target_data.columns],
-                color_discrete_sequence=['red']
-            ).data[0])
+                # Add target player as a different marker
+                target_data = pd.DataFrame([target_player])
+                if y_stat not in target_data.columns:
+                    # Use the mean of the stat for the target player if not available
+                    target_data[y_stat] = data_df[data_df['IDfg'] == target_player['IDfg']][y_stat].mean()
+                
+                fig.add_trace(px.scatter(
+                    target_data,
+                    x=[1],  # Maximum similarity
+                    y=[target_data[y_stat].iloc[0]],
+                    hover_name='Name',
+                    hover_data=[col for col in hover_data if col in target_data.columns],
+                    color_discrete_sequence=['red']
+                ).data[0])
 
-            # Customize the layout
-            fig.update_layout(
-                xaxis_title="Similarity Score",
-                yaxis_title=y_stat,
-                showlegend=False
-            )
+                # Customize the layout
+                fig.update_layout(
+                    xaxis_title="Similarity Score",
+                    yaxis_title=y_stat,
+                    showlegend=False
+                )
 
-            # Display the plot
-            st.plotly_chart(fig)
+                # Display the plot
+                st.plotly_chart(fig)
+
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+            st.error(f"Please try different settings or contact support if the issue persists.")
 
     st.info(f"Note: This similarity comparison is for {player_type.lower()} only. To find similar {'pitchers' if player_type == 'Hitters' else 'hitters'}, please start a new similarity search.")
+
+if __name__ == "__main__":
+    player_similarity_view()
